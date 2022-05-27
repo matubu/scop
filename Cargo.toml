@@ -1,7 +1,8 @@
 [package]
-name = "particule-system"
+name = "scop"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 glium = "0.31.0"
+obj = { version = "0.10.2", features = ["genmesh"] }
