@@ -1,24 +1,11 @@
 extern crate glium;
-extern crate obj;
 
 use glium::{
 	{
 		Display,
-		Frame,
 		Surface,
-		DrawParameters,
-		Program,
 		program,
-		implement_vertex,
 		uniform
-	},
-	uniforms::{
-		UniformBuffer
-	}
-	vertex::VertexBuffer,
-	index::{
-		NoIndices,
-		PrimitiveType::TrianglesList,
 	},
 	glutin::{
 		{ContextBuilder, Api, GlRequest},
@@ -27,77 +14,13 @@ use glium::{
 		window::WindowBuilder
 	}
 };
-use obj::ObjData;
-use std::io::BufReader;
 
-#[derive(Copy, Clone)]
-struct Vertex {
-	position: [f32; 3],
-	texture: [f32; 2],
-	normal: [f32; 3]
-}
+mod object;
+use object::Object;
 
-implement_vertex!(Vertex, position, texture, normal);
+mod rgb;
 
-struct Object {
-	vertex_buffer: VertexBuffer<Vertex>
-}
-
-impl Object {
-	fn load(display: &Display, data: &[u8]) -> Self {
-		let data = ObjData::load_buf(BufReader::new(data)).unwrap();
-
-		let mut vertex_data = Vec::new();
-	
-		for object in data.objects {
-			for group in object.groups {
-				for polygon in group.polys {
-					for vertex in polygon.0.iter() {
-						let position = data.position[vertex.0];
-						let texture = match vertex.1 {
-							Some(i) => data.texture[i],
-							None => [0.0, 0.0]
-						};
-						let normal = match vertex.2 {
-							Some(i) => data.normal[i],
-							None => [0.0, 0.0, 0.0]
-						};
-	
-						vertex_data.push(Vertex {
-							position,
-							normal,
-							texture
-						})
-					}
-				}
-			}
-		}
-	
-		Self {
-			vertex_buffer: VertexBuffer::new(display, &vertex_data).unwrap()
-		}
-	}
-	fn draw(&self, frame: &Frame, program: Program) -> Self {
-		let params = DrawParameters {
-			depth: glium::Depth {
-				test: glium::draw_parameters::DepthTest::IfLess,
-				write: true,
-				.. Default::default()
-			},
-			.. Default::default()
-		};
-
-		frame.draw(
-			&self.vertex_buffer,
-			&NoIndices(TrianglesList),
-			&program,
-			&uniform! { matrix: MATRIX, light: LIGHT },
-			&params
-		).unwrap();
-
-		*self
-	}
-}
+use std::time::Instant;
 
 fn main() {
 	let event_loop = EventLoop::new();
@@ -120,11 +43,13 @@ fn main() {
 				in vec3 normal;
 
 				out vec3 v_normal;
+				out vec3 v_position;
 
 				uniform mat4 matrix;
 
 				void main() {
 					v_normal = transpose(inverse(mat3(matrix))) * normal;
+					v_position = position;
 					gl_Position = matrix * vec4(position, 1.0);
 				}
 			",
@@ -132,14 +57,18 @@ fn main() {
 				#version 150
 
 				in vec3 v_normal;
-				out vec4 color;
+				in vec3 v_position;
+
+				out vec4 f_color;
+
 				uniform vec3 light;
+				uniform vec3 color;
 
 				void main() {
-					float brightness = dot(normalize(v_normal), normalize(light));
-					vec3 dark_color = vec3(0.6, 0.1, 0.1);
-					vec3 regular_color = vec3(1.0, 0.2, 0.2);
-					color = vec4(mix(dark_color, regular_color, brightness), 1.0);
+					// float brightness = dot(normalize(v_normal), normalize(light));
+					f_color = vec4(v_normal * v_position, 1.0);
+					// vec3 dark_color = vec3(0.6, 0.1, 0.1);
+					// f_color = vec4(mix(dark_color, color, brightness), 1.0);
 				}
 			",
 		}
@@ -153,19 +82,23 @@ fn main() {
 	];
 	const LIGHT: [f32; 3] = [-1.0, 0.4, 0.9];
 
-	const uniforms: UniformBuffer = uniform! { matrix: MATRIX, light: LIGHT };
+	let start = Instant::now();
 
 	event_loop.run(move |event, _, control_flow| {
+		let elapsed = start.elapsed().as_secs_f32() * 0.1;
+		let color: [f32; 3] = rgb::from_hsl(elapsed % 1.0, 0.7, 0.8);
+
 		let mut target = display.draw();
 		target.clear_color_and_depth((0.0, 0.0, 0.02, 1.0), 1.0);
-		obj.draw(&target, program, );
-		target.draw(
-				&vertex_buffer,
-				&NoIndices(TrianglesList),
-				&program,
-				&,
-				&params
-			).unwrap();
+		obj.draw(
+			&mut target,
+			&program,
+			&uniform! {
+				matrix: MATRIX,
+				light: LIGHT,
+				color: color
+			}
+		);
 		target.finish().unwrap();
 
 		match event {
