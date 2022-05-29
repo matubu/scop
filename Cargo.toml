@@ -3,6 +3,13 @@ name = "scop"
 version = "0.1.0"
 edition = "2021"
 
+[profile.dev]
+jobs = 4
+incremental = true
+opt-level = 3
+
+[profile.release]
+strip = "symbols"
+
 [dependencies]
 glium = "0.31.0"
-# obj = "0.10.2"

@@ -22,7 +22,7 @@ use object::Object;
 use std::time::Instant;
 
 fn main() {
-	let model_path = std::env::args().nth(1).unwrap_or("./42.obj".to_string());
+	let model_path = std::env::args().nth(1).unwrap_or("./monkey.obj".to_string());
 
 	let event_loop = EventLoop::new();
 	let win = WindowBuilder::new()

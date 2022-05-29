@@ -1,5 +1,4 @@
 extern crate glium;
-// extern crate obj;
 
 use glium::{
 	{
@@ -17,7 +16,6 @@ use glium::{
 	}
 };
 
-// use obj::ObjData;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -66,7 +64,7 @@ impl Object {
 				},
 				Some("f") => {
 					let face: Vec<&str> = data.collect();
-					assert_eq!(face.len(), 3);
+					assert_eq!(face.len(), 3, "model is not triangulated");
 					for vertex in face {
 						let vtn: Vec<usize> = vertex.split("/").map(|s| s.parse::<usize>().unwrap_or(0)).collect();
 
