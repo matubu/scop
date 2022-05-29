@@ -11,21 +11,24 @@ use glium::{
 		{ContextBuilder, Api, GlRequest},
 		event::{Event, WindowEvent},
 		event_loop::{EventLoop, ControlFlow},
-		window::WindowBuilder
+		window::WindowBuilder,
+		dpi::LogicalSize
 	}
 };
 
 mod object;
 use object::Object;
 
-mod rgb;
-
 use std::time::Instant;
 
 fn main() {
+	let model_path = std::env::args().nth(1).unwrap_or("./42.obj".to_string());
+
 	let event_loop = EventLoop::new();
 	let win = WindowBuilder::new()
-				.with_title("scop");
+				.with_title("scop")
+				.with_inner_size(LogicalSize::new(1024.0, 512.0))
+				.with_resizable(false);
 	let ctx = ContextBuilder::new()
 				.with_multisampling(16)
 				.with_depth_buffer(24)
@@ -33,7 +36,7 @@ fn main() {
 				.with_gl(GlRequest::Specific(Api::OpenGl, (4, 1)));
 	let display = Display::new(win, ctx, &event_loop).unwrap();
 
-	let obj: Object = Object::load(&display, include_bytes!("../monkey.obj"));
+	let obj: Object = Object::load(&display, &model_path);
 	let program = program!(&display,
 		150 => {
 			vertex: "
@@ -50,7 +53,7 @@ fn main() {
 				void main() {
 					v_normal = transpose(inverse(mat3(matrix))) * normal;
 					v_position = position;
-					gl_Position = matrix * vec4(position, 1.0);
+					gl_Position = matrix * vec4(position * 0.3, 1.0);
 				}
 			",
 			fragment: "
@@ -62,41 +65,58 @@ fn main() {
 				out vec4 f_color;
 
 				uniform vec3 light;
-				uniform vec3 color;
 
 				void main() {
-					// float brightness = dot(normalize(v_normal), normalize(light));
-					f_color = vec4(v_normal * v_position, 1.0);
-					// vec3 dark_color = vec3(0.6, 0.1, 0.1);
-					// f_color = vec4(mix(dark_color, color, brightness), 1.0);
+					float brightness = dot(normalize(v_normal), normalize(light));
+					vec3 dark_color = vec3(0.125, 0.2, 0.5);
+					vec3 light_color = vec3(0.2, 0.4, 0.9);
+					f_color = vec4(mix(dark_color, light_color, brightness), 1.0);
 				}
 			",
 		}
 	).unwrap();
 
-	const MATRIX: [[f32; 4]; 4] = [
-		[0.3, 0.0, 0.0, 0.0],
-		[0.0, 0.3, 0.0, 0.0],
-		[0.0, 0.0, -0.3, 0.0],
-		[0.0, 0.0, 0.0, 1.0]
-	];
-	const LIGHT: [f32; 3] = [-1.0, 0.4, 0.9];
-
 	let start = Instant::now();
 
 	event_loop.run(move |event, _, control_flow| {
-		let elapsed = start.elapsed().as_secs_f32() * 0.1;
-		let color: [f32; 3] = rgb::from_hsl(elapsed % 1.0, 0.7, 0.8);
+		let elapsed = start.elapsed().as_secs_f32();
 
 		let mut target = display.draw();
-		target.clear_color_and_depth((0.0, 0.0, 0.02, 1.0), 1.0);
+		target.clear_color_and_depth((0.005, 0.005, 0.018, 1.0), 1.0);
+
+		let a: f32 = 0.0; // yaw
+		let b: f32 = elapsed * 0.2; // pitch
+		let y: f32 = 0.0; // roll
+
+		let matrix: [[f32; 4]; 4] = [
+			[
+				a.cos() * b.cos(),
+				a.cos() * b.sin() * y.sin() - a.sin() * y.cos(),
+				a.cos() * b.sin() * y.cos() + a.sin() + y.sin(),
+				0.0
+			],
+			[
+				a.sin() * b.cos(),
+				a.sin() * b.sin() * y.sin() + a.cos() + y.cos(),
+				a.sin() * b.sin() * y.cos() - a.cos() * y.sin(),
+				0.0
+			],
+			[
+				-b.sin(),
+				b.cos() * y.sin(),
+				b.cos() * y.cos(),
+				0.0
+			],
+			[0.0, 0.0, 0.0, 1.0]
+		];
+		let light: [f32; 3] = [-1.0, 0.4, 0.9];
+
 		obj.draw(
 			&mut target,
 			&program,
 			&uniform! {
-				matrix: MATRIX,
-				light: LIGHT,
-				color: color
+				matrix: matrix,
+				light: light
 			}
 		);
 		target.finish().unwrap();

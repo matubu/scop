@@ -1,5 +1,5 @@
 extern crate glium;
-extern crate obj;
+// extern crate obj;
 
 use glium::{
 	{
@@ -17,8 +17,9 @@ use glium::{
 	}
 };
 
-use obj::ObjData;
-use std::io::BufReader;
+// use obj::ObjData;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 
 #[derive(Copy, Clone)]
 struct Vertex {
@@ -34,32 +35,49 @@ pub struct Object {
 }
 
 impl Object {
-	pub fn load(display: &Display, data: &[u8]) -> Self {
-		let data = ObjData::load_buf(BufReader::new(data)).unwrap();
+	pub fn load(display: &Display, path: &String) -> Self {
+		let file = File::open(path).unwrap();
+		let lines = BufReader::new(file).lines();
 
-		let mut vertex_data = Vec::new();
+		let mut vertices: Vec::<Vec<f32>> = vec![vec![0.0, 0.0, 0.0]];
+		let mut textures: Vec::<Vec<f32>> = vec![vec![0.0, 0.0]];
+		let mut normals: Vec::<Vec<f32>> = vec![vec![0.0, 0.0, 0.0]];
+		let mut vertex_data = Vec::<Vertex>::new();
 	
-		for object in data.objects {
-			for group in object.groups {
-				for polygon in group.polys {
-					for vertex in polygon.0.iter() {
-						let position = data.position[vertex.0];
-						let texture = match vertex.1 {
-							Some(i) => data.texture[i],
-							None => [0.0, 0.0]
-						};
-						let normal = match vertex.2 {
-							Some(i) => data.normal[i],
-							None => [0.0, 0.0, 0.0]
-						};
-	
+		for line in lines {
+			let line = line.unwrap_or("".to_string());
+			let line = line.trim();
+			if line.chars().nth(0).unwrap_or('#') == '#' {
+				continue ;
+			}
+
+			let mut data = line.split(" ");
+			let elm = data.nth(0);
+
+			match elm {
+				Some("v") | Some("vt") | Some("vn") => {
+					let vec: Vec<f32> = data.map(|s| s.parse::<f32>().unwrap()).collect();
+					match elm {
+						Some("v" ) => vertices.push(vec),
+						Some("vt") => textures.push(vec),
+						Some("vn") => normals .push(vec),
+						_ => ()
+					};
+				},
+				Some("f") => {
+					let face: Vec<&str> = data.collect();
+					assert_eq!(face.len(), 3);
+					for vertex in face {
+						let vtn: Vec<usize> = vertex.split("/").map(|s| s.parse::<usize>().unwrap_or(0)).collect();
+
 						vertex_data.push(Vertex {
-							position,
-							normal,
-							texture
-						})
+							position: vertices[vtn[0]].as_slice().try_into().unwrap(),
+							texture : textures[vtn[1]].as_slice().try_into().unwrap(),
+							normal  : normals [vtn[2]].as_slice().try_into().unwrap()
+						});
 					}
-				}
+				},
+				_ => ()
 			}
 		}
 	

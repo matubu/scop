@@ -5,6 +5,4 @@ edition = "2021"
 
 [dependencies]
 glium = "0.31.0"
-obj = "0.10.2"
-# glium = "0.29.0"
-# obj-rs = { version = "0.7.0", features = ["glium"] }
+# obj = "0.10.2"
