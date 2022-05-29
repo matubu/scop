@@ -32,7 +32,31 @@ pub struct Object {
 	vertex_buffer: VertexBuffer<Vertex>
 }
 
+pub struct BoundingBox {
+	min: [f32; 3],
+	size: [f32; 3],
+	scale: f32
+}
+
+// TODO generate normals
 impl Object {
+	fn get_bounding_box(vertex_data: &Vec::<Vertex>) -> BoundingBox {
+		let mut min = [0f32; 3];
+		let mut max = [0f32; 3];
+		let mut size = [0f32; 3];
+
+		for i in 0..3 {
+			min[i] = vertex_data.iter().fold(f32::MAX, |a, v| f32::min(a, v.position[i]));
+			max[i] = vertex_data.iter().fold(f32::MIN, |a, v| f32::max(a, v.position[i]));
+			size[i] = max[i] - min[i];
+		}
+
+		BoundingBox {
+			min,
+			size,
+			scale: size.iter().fold(f32::MIN, |a, v| f32::max(a, *v))
+		}
+	}
 	pub fn load(display: &Display, path: &String) -> Self {
 		let file = File::open(path).unwrap();
 		let lines = BufReader::new(file).lines();
@@ -66,8 +90,8 @@ impl Object {
 					let face: Vec<&str> = data.collect();
 					assert_eq!(face.len(), 3, "model is not triangulated");
 					for vertex in face {
-						let vtn: Vec<usize> = vertex.split("/").map(|s| s.parse::<usize>().unwrap_or(0)).collect();
-
+						let mut vtn: Vec<usize> = vertex.split("/").map(|s| s.parse::<usize>().unwrap_or(0)).collect();
+						vtn.resize(3, 0);
 						vertex_data.push(Vertex {
 							position: vertices[vtn[0]].as_slice().try_into().unwrap(),
 							texture : textures[vtn[1]].as_slice().try_into().unwrap(),
@@ -76,6 +100,16 @@ impl Object {
 					}
 				},
 				_ => ()
+			}
+		}
+
+		let bounding_box: BoundingBox = Object::get_bounding_box(&vertex_data);
+		const SCALE: f32 = 3.0;
+
+		for vertex in &mut vertex_data {
+			for i in 0..3 {
+				vertex.position[i]
+					= (vertex.position[i] - bounding_box.min[i] - bounding_box.size[i] / 2.0) * SCALE / bounding_box.scale;
 			}
 		}
 	

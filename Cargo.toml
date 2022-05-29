@@ -13,3 +13,4 @@ strip = "symbols"
 
 [dependencies]
 glium = "0.31.0"
+image = "0.24.2"
