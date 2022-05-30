@@ -89,12 +89,12 @@ fn main() {
 
 				void main() {
 					float brightness = dot(normalize(v_normal), normalize(light));
-					vec4 dark_color = vec4(0.56, 0.56, 0.58, 1.0);
-					vec4 light_color = vec4(1.0, 1.0, 1.0, 1.0);
-					f_color = texture(tex, v_texture) * mix(dark_color, light_color, brightness);
-					// vec3 dark_color = vec3(0.125, 0.2, 0.5);
-					// vec3 light_color = vec3(0.2, 0.4, 0.9);
-					// f_color = vec4(mix(dark_color, light_color, brightness), 1.0);
+					// vec4 dark_color = vec4(0.56, 0.56, 0.58, 1.0);
+					// vec4 light_color = vec4(1.0, 1.0, 1.0, 1.0);
+					// f_color = texture(tex, v_texture) * mix(dark_color, light_color, brightness);
+					vec3 dark_color = vec3(0.125, 0.2, 0.5);
+					vec3 light_color = vec3(0.2, 0.4, 0.9);
+					f_color = vec4(mix(dark_color, light_color, brightness), 1.0);
 				}
 			",
 		}
@@ -122,7 +122,7 @@ fn main() {
 							..
 						},
 						..
-					} => izoom += y / 1000.0,
+					} => izoom += y / 500.0,
 					_ => ()
 				}
 			}
@@ -141,7 +141,7 @@ fn main() {
 
 			iz *= 0.95;
 			iy *= 0.95;
-			izoom *= 0.95;
+			izoom *= 0.90;
 			rot.1 += iz;
 			rot.0 = (rot.0 + iy).clamp(
 				-std::f32::consts::FRAC_PI_2,
