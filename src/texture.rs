@@ -1,5 +1,5 @@
-extern crate image;
 extern crate glium;
+extern crate image;
 
 use glium::{
 	Display,
