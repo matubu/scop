@@ -67,7 +67,10 @@ impl Mouse {
 	pub fn get_delta(&self) -> (f64, f64) {
 		self.delta
 	}
-	pub fn is_left_button_pressed(&self) -> bool {
+	pub fn is_left_mouse_pressed(&self) -> bool {
 		self.button == MouseButton::Left
+	}
+	pub fn is_middle_mouse_pressed(&self) -> bool {
+		self.button == MouseButton::Middle
 	}
 }

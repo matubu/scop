@@ -151,18 +151,26 @@ fn main() {
 					_ => ()
 				}
 			}
+
 			mouse.apply_events(events);
-		
-			if mouse.is_left_button_pressed() {
+
+			display.gl_window().window().set_cursor_icon(
+				if mouse.is_left_mouse_pressed() { CursorIcon::Grabbing }
+				else if mouse.is_middle_mouse_pressed() { CursorIcon::Move }
+				else { CursorIcon::Grab }
+			);
+
+			if mouse.is_left_mouse_pressed() {
 				let delta = mouse.get_delta();
 				iz = delta.0 as f32 / 100.0;
 				iy = delta.1 as f32 / 100.0;
 			}
 
-			display.gl_window().window().set_cursor_icon(
-				if mouse.is_left_button_pressed() { CursorIcon::Grabbing }
-				else { CursorIcon::Grab }
-			);
+			if mouse.is_middle_mouse_pressed() {
+				let delta = mouse.get_delta();
+				offset[0] += delta.0 as f32 / 300.0;
+				offset[1] -= delta.1 as f32 / 300.0;
+			}
 
 			iz *= 0.95;
 			iy *= 0.95;
