@@ -29,7 +29,7 @@ mod mouse;
 use mouse::Mouse;
 
 mod matrix;
-use matrix::{create_matrix};
+use matrix::{create_matrix, get_perspective};
 
 mod render_loop;
 use render_loop::{render_loop_start};
@@ -50,6 +50,8 @@ fn main() {
 
 	let mut tex: Texture = Texture::load(&display, "assets/metal.jpg").unwrap();
 
+	let light: [f32; 3] = [-1.0, 0.4, 0.9];
+
 	let program = program!(&display,
 		150 => {
 			vertex: "
@@ -61,17 +63,16 @@ fn main() {
 
 				out vec3 v_normal;
 				out vec2 v_texture;
-				out vec3 v_position;
+				out vec4 v_position;
 
+				uniform mat4 perspective;
 				uniform mat4 matrix;
-				uniform vec2 scaling;
+				uniform vec4 offset;
 
 				void main() {
 					v_normal = transpose(inverse(mat3(matrix))) * normal;
 					v_texture = texture;
-					v_position = position;
-					gl_Position = (matrix * vec4(position * 0.3, 1.0))
-						* vec4(scaling, 1.0, 1.0);
+					gl_Position = v_position = perspective * (matrix * vec4(position, 1.0) + offset);
 				}
 			",
 			fragment: "
@@ -79,7 +80,7 @@ fn main() {
 
 				in vec3 v_normal;
 				in vec2 v_texture;
-				in vec3 v_position;
+				in vec4 v_position;
 
 				out vec4 f_color;
 
@@ -88,9 +89,11 @@ fn main() {
 
 				void main() {
 					float brightness = dot(normalize(v_normal), normalize(light));
+					
 					vec4 dark_color = vec4(0.56, 0.56, 0.58, 1.0);
 					vec4 light_color = vec4(1.0, 1.0, 1.0, 1.0);
 					f_color = texture(tex, v_texture) * mix(dark_color, light_color, brightness);
+					
 					// vec3 dark_color = vec3(0.125, 0.2, 0.5);
 					// vec3 light_color = vec3(0.2, 0.4, 0.9);
 					// f_color = vec4(mix(dark_color, light_color, brightness), 1.0);
@@ -103,7 +106,7 @@ fn main() {
 	let mut mouse: Mouse = Mouse::new();
 
 	let mut rot: (f32, f32, f32) = (0.0, std::f32::consts::PI, 0.0);
-	let mut scale = 1.0;
+	let mut offset: [f32; 4] = [0.0, 0.0, 1.0, 0.0];
 
 	let mut iz = 0.0;
 	let mut iy = 0.0;
@@ -169,26 +172,22 @@ fn main() {
 				-std::f32::consts::FRAC_PI_2,
 				std::f32::consts::FRAC_PI_2
 			);
-			scale = f32::max(scale * (1.0 + izoom), 0.05);
+			offset[2] = f32::max(offset[2] + izoom, 0.0);
 	
 			fps.tick();
 	
 			let mut target = display.draw();
 			target.clear_color_and_depth((0.005, 0.005, 0.018, 1.0), 1.0);
-	
-			let light: [f32; 3] = [-1.0, 0.4, 0.9];
 
-			let dimentions = target.get_dimensions();
-			let max = u32::max(dimentions.0, dimentions.1) as f32;
-			let scale_x = dimentions.1 as f32 / max;
-			let scale_y = dimentions.0 as f32 / max;
+			let (width, height) = target.get_dimensions();
 	
 			obj.draw(
 				&mut target,
 				&program,
 				&uniform! {
-					matrix: create_matrix(rot, scale),
-					scaling: [scale_x, scale_y],
+					perspective: get_perspective(width as f32, height as f32),
+					matrix: create_matrix(rot),
+					offset: offset,
 					light: light,
 					tex: &tex.texture
 				}

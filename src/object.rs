@@ -69,7 +69,6 @@ impl Object {
 		}
 	}
 
-	// Error handling
 	pub fn load(display: &Display, path: &String) -> Result<Self, String> {
 		let file = match File::open(path) {
 			Err(_) => return Err("cannot open file".to_string()),
@@ -137,7 +136,7 @@ impl Object {
 		}
 
 		let bounding_box: BoundingBox = Object::get_bounding_box(&vertex_data);
-		const SCALE: f32 = 3.0;
+		const SCALE: f32 = 1.0;
 
 		for vertex in &mut vertex_data {
 			for i in 0..3 {
