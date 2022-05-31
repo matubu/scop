@@ -16,6 +16,10 @@ use glium::{
 	}
 };
 
+#[path = "vector.rs"]
+mod vector;
+use vector::Vector;
+
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -36,6 +40,14 @@ pub struct BoundingBox {
 	min: [f32; 3],
 	size: [f32; 3],
 	scale: f32
+}
+
+
+pub fn generate_normal(a: &Vector, b: &Vector, c: &Vector) -> [f32; 3] {
+	let ab = b - a;
+	let ac = c - a;
+
+	ab.cross(&ac).normalize().to_array()
 }
 
 // TODO generate normals
@@ -61,9 +73,8 @@ impl Object {
 		let file = File::open(path).unwrap();
 		let lines = BufReader::new(file).lines();
 
-		let mut vertices: Vec::<Vec<f32>> = vec![vec![0.0, 0.0, 0.0]];
+		let mut vertices: Vec::<Vector> = vec![Vector::new()];
 		let mut textures: Vec::<Vec<f32>> = vec![vec![0.0, 0.0]];
-		let mut normals: Vec::<Vec<f32>> = vec![vec![0.0, 0.0, 0.0]];
 		let mut vertex_data = Vec::<Vertex>::new();
 	
 		for line in lines {
@@ -80,22 +91,38 @@ impl Object {
 				Some("v") | Some("vt") | Some("vn") => {
 					let vec: Vec<f32> = data.map(|s| s.parse::<f32>().unwrap()).collect();
 					match elm {
-						Some("v" ) => vertices.push(vec),
+						Some("v" ) => vertices.push(Vector::from_vec(&vec)),
 						Some("vt") => textures.push(vec),
-						Some("vn") => normals .push(vec),
 						_ => ()
 					};
 				},
 				Some("f") => {
 					let face: Vec<&str> = data.collect();
 					assert_eq!(face.len(), 3, "model is not triangulated");
+					let face: Vec<Vec<usize>> =
+						face
+							.iter()
+							.map(
+								|s| {
+									let mut vertex: Vec<usize> = 
+										s.split("/")
+										.map(|s| s.parse::<usize>().unwrap_or(0))
+										.collect();
+									vertex.resize(3, 0);
+									vertex
+								}
+							)
+							.collect();
+					let normal = generate_normal(
+						&vertices[face[0][0]],
+						&vertices[face[1][0]],
+						&vertices[face[2][0]]
+					);
 					for vertex in face {
-						let mut vtn: Vec<usize> = vertex.split("/").map(|s| s.parse::<usize>().unwrap_or(0)).collect();
-						vtn.resize(3, 0);
 						vertex_data.push(Vertex {
-							position: vertices[vtn[0]].as_slice().try_into().unwrap(),
-							texture : textures[vtn[1]].as_slice().try_into().unwrap(),
-							normal  : normals [vtn[2]].as_slice().try_into().unwrap()
+							position: vertices[vertex[0]].to_array(),
+							texture : textures[vertex[1]].as_slice().try_into().unwrap(),
+							normal
 						});
 					}
 				},
