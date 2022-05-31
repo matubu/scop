@@ -146,9 +146,12 @@ impl Object {
 			}
 		}
 	
-		Ok(Self {
-			vertex_buffer: VertexBuffer::new(display, &vertex_data).unwrap()
-		})
+		match VertexBuffer::new(display, &vertex_data) {
+			Err(_) => return Err("cannot create vertex buffer".to_string()),
+			Ok(buf) => Ok(Self {
+				vertex_buffer: buf
+			}),
+		}
 	}
 
 	pub fn draw<U: glium::uniforms::Uniforms>(&self, frame: &mut Frame, program: &Program, uniform: &U) {

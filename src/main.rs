@@ -12,7 +12,7 @@ use glium::{
 		event::{Event, WindowEvent, MouseScrollDelta},
 		event_loop::{EventLoop},
 		window::{WindowBuilder, CursorIcon},
-		dpi::{LogicalSize, Position}
+		dpi::{LogicalSize}
 	}
 };
 
