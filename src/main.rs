@@ -12,7 +12,7 @@ use glium::{
 		event::{Event, WindowEvent, MouseScrollDelta},
 		event_loop::{EventLoop},
 		window::{WindowBuilder, CursorIcon},
-		dpi::LogicalSize
+		dpi::{LogicalSize, Position}
 	}
 };
 
@@ -46,10 +46,9 @@ fn main() {
 	let display = Display::new(win, ctx, &event_loop).unwrap();
 
 	let obj_path = std::env::args().nth(1).unwrap_or("assets/monkey.obj".to_string());
-	let obj: Object = Object::load(&display, &obj_path);
+	let mut obj: Object = Object::load(&display, &obj_path).unwrap();
 
-	let tex_path = "assets/texture.jpg".to_string();
-	let tex: Texture = Texture::load(&display, &tex_path);
+	let mut tex: Texture = Texture::load(&display, "assets/metal.jpg").unwrap();
 
 	let program = program!(&display,
 		150 => {
@@ -89,12 +88,12 @@ fn main() {
 
 				void main() {
 					float brightness = dot(normalize(v_normal), normalize(light));
-					// vec4 dark_color = vec4(0.56, 0.56, 0.58, 1.0);
-					// vec4 light_color = vec4(1.0, 1.0, 1.0, 1.0);
-					// f_color = texture(tex, v_texture) * mix(dark_color, light_color, brightness);
-					vec3 dark_color = vec3(0.125, 0.2, 0.5);
-					vec3 light_color = vec3(0.2, 0.4, 0.9);
-					f_color = vec4(mix(dark_color, light_color, brightness), 1.0);
+					vec4 dark_color = vec4(0.56, 0.56, 0.58, 1.0);
+					vec4 light_color = vec4(1.0, 1.0, 1.0, 1.0);
+					f_color = texture(tex, v_texture) * mix(dark_color, light_color, brightness);
+					// vec3 dark_color = vec3(0.125, 0.2, 0.5);
+					// vec3 light_color = vec3(0.2, 0.4, 0.9);
+					// f_color = vec4(mix(dark_color, light_color, brightness), 1.0);
 				}
 			",
 		}
@@ -123,6 +122,29 @@ fn main() {
 						},
 						..
 					} => izoom += y / 500.0,
+					Event::WindowEvent {
+						event: WindowEvent::DroppedFile(path),
+						..
+					} => {
+						match path.to_str() {
+							Some(path) => {
+								if path.ends_with(".obj") {
+									match Object::load(&display, &path.to_string()) {
+										Ok(object) => obj = object,
+										Err(e) => eprintln!("\r\x1B[2K\x1B[1;91mError\x1B[0m {e}")
+									}
+								}
+								else {
+									match Texture::load(&display, path) {
+										Ok(texture) => tex = texture,
+										Err(e) => eprintln!("\r\x1B[2K\x1B[1;91mError\x1B[0m {e}")
+									}
+								}
+							},
+							None => ()
+						}
+						
+					}
 					_ => ()
 				}
 			}

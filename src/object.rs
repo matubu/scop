@@ -68,8 +68,13 @@ impl Object {
 			scale: size.iter().fold(f32::MIN, |a, v| f32::max(a, *v))
 		}
 	}
-	pub fn load(display: &Display, path: &String) -> Self {
-		let file = File::open(path).unwrap();
+
+	// Error handling
+	pub fn load(display: &Display, path: &String) -> Result<Self, String> {
+		let file = match File::open(path) {
+			Err(_) => return Err("cannot open file".to_string()),
+			Ok(file) => file,
+		};
 		let lines = BufReader::new(file).lines();
 
 		let mut vertices: Vec::<Vector> = vec![Vector::new()];
@@ -87,7 +92,7 @@ impl Object {
 			let elm = data.nth(0);
 
 			match elm {
-				Some("v") | Some("vt") | Some("vn") => {
+				Some("v") | Some("vt") => {
 					let vec: Vec<f32> = data.map(|s| s.parse::<f32>().unwrap()).collect();
 					match elm {
 						Some("v" ) => vertices.push(Vector::from_vec(&vec)),
@@ -97,7 +102,9 @@ impl Object {
 				},
 				Some("f") => {
 					let face: Vec<&str> = data.collect();
-					assert_eq!(face.len(), 3, "model is not triangulated");
+					if face.len() != 3 {
+						return Err("model is not triangulated".to_string())
+					}
 					let face: Vec<Vec<usize>> =
 						face
 							.iter()
@@ -139,10 +146,11 @@ impl Object {
 			}
 		}
 	
-		Self {
+		Ok(Self {
 			vertex_buffer: VertexBuffer::new(display, &vertex_data).unwrap()
-		}
+		})
 	}
+
 	pub fn draw<U: glium::uniforms::Uniforms>(&self, frame: &mut Frame, program: &Program, uniform: &U) {
 		let params = DrawParameters {
 			depth: glium::Depth {
