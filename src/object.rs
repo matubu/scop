@@ -50,7 +50,6 @@ pub fn generate_normal(a: &Vector, b: &Vector, c: &Vector) -> [f32; 3] {
 	ab.cross(&ac).normalize().to_array()
 }
 
-// TODO generate normals
 impl Object {
 	fn get_bounding_box(vertex_data: &Vec::<Vertex>) -> BoundingBox {
 		let mut min = [0f32; 3];
