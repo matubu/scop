@@ -9,7 +9,7 @@ use glium::{
 	},
 	glutin::{
 		{ContextBuilder, Api, GlRequest},
-		event::{Event, WindowEvent, MouseScrollDelta},
+		event::{Event, WindowEvent, MouseScrollDelta, ElementState, VirtualKeyCode, KeyboardInput},
 		event_loop::{EventLoop},
 		window::{WindowBuilder, CursorIcon},
 		dpi::{LogicalSize}
@@ -86,17 +86,28 @@ fn main() {
 
 				uniform vec3 light;
 				uniform sampler2D tex;
+				uniform float fac;
 
 				void main() {
 					float brightness = dot(normalize(v_normal), normalize(light));
-					
-					vec4 dark_color = vec4(0.56, 0.56, 0.58, 1.0);
-					vec4 light_color = vec4(1.0, 1.0, 1.0, 1.0);
-					f_color = texture(tex, v_texture) * mix(dark_color, light_color, brightness);
-					
-					// vec3 dark_color = vec3(0.125, 0.2, 0.5);
-					// vec3 light_color = vec3(0.2, 0.4, 0.9);
-					// f_color = vec4(mix(dark_color, light_color, brightness), 1.0);
+
+					vec4 base_shade = texture(tex, v_texture)
+						* mix(
+							vec4(0.56, 0.56, 0.58, 1.0),
+							vec4(1.0, 1.0, 1.0, 1.0),
+							brightness
+						);
+
+					vec4 texture_shade = vec4(
+						mix(
+							vec3(0.125, 0.2, 0.5),
+							vec3(0.2, 0.4, 0.9),
+							brightness
+						),
+						1.0
+					);
+
+					f_color = mix(texture_shade, base_shade, fac);
 				}
 			",
 		}
@@ -107,6 +118,8 @@ fn main() {
 
 	let mut rot: (f32, f32, f32) = (0.0, std::f32::consts::PI, 0.0);
 	let mut offset: [f32; 4] = [0.0, 0.0, 1.0, 0.0];
+	let mut fac: f32 = 0.0;
+	let mut texture_fade = -0.1;
 
 	let mut iz = 0.0;
 	let mut iy = 0.0;
@@ -126,6 +139,17 @@ fn main() {
 						..
 					} => izoom += y / 500.0,
 					Event::WindowEvent {
+						event: WindowEvent::KeyboardInput {
+							input: KeyboardInput {
+								state: ElementState::Released,
+								virtual_keycode: Some(VirtualKeyCode::T),
+								..
+							},
+							..
+						},
+						..
+					} => texture_fade = -texture_fade,
+					Event::WindowEvent {
 						event: WindowEvent::DroppedFile(path),
 						..
 					} => {
@@ -139,7 +163,10 @@ fn main() {
 								}
 								else {
 									match Texture::load(&display, path) {
-										Ok(texture) => tex = texture,
+										Ok(texture) => {
+											tex = texture;
+											texture_fade = f32::abs(texture_fade);
+										},
 										Err(e) => eprintln!("\r\x1B[2K\x1B[1;91mError\x1B[0m {e}")
 									}
 								}
@@ -181,6 +208,7 @@ fn main() {
 				std::f32::consts::FRAC_PI_2
 			);
 			offset[2] = f32::max(offset[2] + izoom, 0.0);
+			fac = (fac + texture_fade).clamp(0.0, 1.0);
 	
 			fps.tick();
 	
@@ -197,7 +225,8 @@ fn main() {
 					matrix: create_matrix(rot),
 					offset: offset,
 					light: light,
-					tex: &tex.texture
+					tex: &tex.texture,
+					fac: fac
 				}
 			);
 			target.finish().unwrap();
