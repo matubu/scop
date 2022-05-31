@@ -38,12 +38,10 @@ fn main() {
 	let event_loop = EventLoop::new();
 	let win = WindowBuilder::new()
 				.with_title("scop")
-				.with_inner_size(LogicalSize::new(1024.0, 1024.0))
-				.with_resizable(false);
+				.with_inner_size(LogicalSize::new(1024.0, 1024.0));
 	let ctx = ContextBuilder::new()
 				.with_multisampling(4)
 				.with_depth_buffer(24)
-				.with_vsync(true)
 				.with_gl(GlRequest::Specific(Api::OpenGl, (4, 1)));
 	let display = Display::new(win, ctx, &event_loop).unwrap();
 
@@ -67,12 +65,14 @@ fn main() {
 				out vec3 v_position;
 
 				uniform mat4 matrix;
+				uniform vec2 scaling;
 
 				void main() {
 					v_normal = transpose(inverse(mat3(matrix))) * normal;
 					v_texture = texture;
 					v_position = position;
-					gl_Position = matrix * vec4(position * 0.3, 1.0);
+					gl_Position = (matrix * vec4(position * 0.3, 1.0))
+						* vec4(scaling, 1.0, 1.0);
 				}
 			",
 			fragment: "
@@ -155,12 +155,18 @@ fn main() {
 			target.clear_color_and_depth((0.005, 0.005, 0.018, 1.0), 1.0);
 	
 			let light: [f32; 3] = [-1.0, 0.4, 0.9];
+
+			let dimentions = target.get_dimensions();
+			let max = u32::max(dimentions.0, dimentions.1) as f32;
+			let scale_x = dimentions.1 as f32 / max;
+			let scale_y = dimentions.0 as f32 / max;
 	
 			obj.draw(
 				&mut target,
 				&program,
 				&uniform! {
 					matrix: create_matrix(rot, scale),
+					scaling: [scale_x, scale_y],
 					light: light,
 					tex: &tex.texture
 				}
